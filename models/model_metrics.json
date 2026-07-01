@@ -1,0 +1,32 @@
+{
+  "best_model": "XGBoost",
+  "models": {
+    "Decision Tree": {
+      "train_accuracy": 93.5,
+      "test_accuracy": 90.9
+    },
+    "Random Forest": {
+      "train_accuracy": 94.8,
+      "test_accuracy": 92.2
+    },
+    "KNN": {
+      "train_accuracy": 79.6,
+      "test_accuracy": 81.8
+    },
+    "XGBoost": {
+      "train_accuracy": 96.7,
+      "test_accuracy": 92.9
+    }
+  },
+  "feature_columns": [
+    "Gender",
+    "Married",
+    "Education",
+    "Self_Employed",
+    "ApplicantIncome",
+    "LoanAmount",
+    "Loan_Amount_Term",
+    "Credit_History",
+    "Property_Area"
+  ]
+}

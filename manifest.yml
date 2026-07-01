@@ -1,0 +1,9 @@
+applications:
+- name: smart-lender
+  random-route: true
+  memory: 512M
+  buildpacks:
+    - python_buildpack
+  command: gunicorn wsgi:app --bind 0.0.0.0:$PORT
+  env:
+    SECRET_KEY: change-me-in-production
