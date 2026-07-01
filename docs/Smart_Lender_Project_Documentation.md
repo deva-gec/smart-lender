@@ -7,7 +7,7 @@
 | Field | Details |
 |-------|---------|
 | **Project Title** | Smart Lender: Machine Learning-Powered Loan Approval System |
-| **Author** | Deva |
+| **Author** | K Deva Venkata Prem Sai & Team |
 | **GitHub** | https://github.com/deva-gec/smart-lender |
 | **Date** | July 2026 |
 
@@ -326,9 +326,15 @@ Smart Lender demonstrates how machine learning can transform loan approval workf
 
 ## 15. Team Member Details
 
-| Name | Role | Institution | GitHub |
-|------|------|-------------|--------|
-| Deva | Developer & ML Engineer | GEC | [@deva-gec](https://github.com/deva-gec) |
+| Name | Role |
+|------|------|
+| K Deva Venkata Prem Sai | Project Lead & Developer |
+| Pravallika Banavath | Team Member |
+| Eswar Para | Team Member |
+| Pedaprolu S V N Hasini Pravallika | Team Member |
+| Bhukya Suneetha | Team Member |
+
+**GitHub Repository:** [@deva-gec/smart-lender](https://github.com/deva-gec/smart-lender)
 
 ---
 

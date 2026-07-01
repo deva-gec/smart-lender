@@ -242,9 +242,13 @@ Ensure models are trained before deploying so `models/xgboost_model.pkl` is incl
 
 ## Team Member Details
 
-| Name | Role | GitHub |
-|------|------|--------|
-| Deva | Developer | [@deva-gec](https://github.com/deva-gec) |
+| Name | Role |
+|------|------|
+| K Deva Venkata Prem Sai | Project Lead & Developer |
+| Pravallika Banavath | Team Member |
+| Eswar Para | Team Member |
+| Pedaprolu S V N Hasini Pravallika | Team Member |
+| Bhukya Suneetha | Team Member |
 
 ---
 
