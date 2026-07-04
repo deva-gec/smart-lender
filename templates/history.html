@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}My Applications — Smart Lender{% endblock %}
+{% block body_class %}app-page{% endblock %}
+
+{% block body %}
+<nav class="navbar">
+    <div class="nav-inner">
+        <a href="{{ url_for('dashboard') }}" class="nav-brand">
+            <span class="nav-logo">SL</span>
+            <span>Smart Lender</span>
+        </a>
+        <div class="nav-links">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('history') }}" class="active">My Applications</a>
+        </div>
+        <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-sm">Sign out</a>
+    </div>
+</nav>
+
+<main class="main-content">
+    <section class="page-header">
+        <div>
+            <h1>My Applications</h1>
+            <p>All your loan predictions saved in your account database</p>
+        </div>
+        <a href="{{ url_for('api_export_my_data') }}" class="btn btn-secondary" target="_blank">Export JSON</a>
+    </section>
+
+    <section class="card table-card">
+        {% if applications %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Date</th>
+                        <th>Income</th>
+                        <th>Loan</th>
+                        <th>Credit</th>
+                        <th>Result</th>
+                        <th>Confidence</th>
+                        <th>Risk</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for app in applications %}
+                    <tr>
+                        <td>#{{ app.id }}</td>
+                        <td>{{ app.created_at[:10] }}</td>
+                        <td>₹{{ "{:,.0f}".format(app.applicant_income) }}</td>
+                        <td>₹{{ "{:,.0f}".format(app.loan_amount * 1000) }}</td>
+                        <td>{{ 'Good' if app.credit_history == 1 else 'Poor' }}</td>
+                        <td><span class="badge badge-{{ 'success' if app.prediction == 'Approved' else 'danger' }}">{{ app.prediction }}</span></td>
+                        <td>{{ app.confidence }}%</td>
+                        <td>{{ app.risk_level }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>No applications yet</h3>
+            <p>Submit a loan application from the dashboard to see it here.</p>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Go to Dashboard</a>
+        </div>
+        {% endif %}
+    </section>
+</main>
+{% endblock %}

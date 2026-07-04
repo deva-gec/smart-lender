@@ -1,115 +1,64 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prediction Result — Smart Lender</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <header class="header">
-        <div class="container">
-            <div class="brand">
-                <span class="brand-icon">🏦</span>
-                <div>
-                    <h1>Smart Lender</h1>
-                    <p class="tagline">Prediction Result</p>
-                </div>
+{% extends "base.html" %}
+{% block title %}Result — Smart Lender{% endblock %}
+{% block body_class %}app-page{% endblock %}
+
+{% block body %}
+<nav class="navbar">
+    <div class="nav-inner">
+        <a href="{{ url_for('dashboard') }}" class="nav-brand">
+            <span class="nav-logo">SL</span>
+            <span>Smart Lender</span>
+        </a>
+        <div class="nav-links">
+            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('history') }}">My Applications</a>
+        </div>
+        <a href="{{ url_for('logout') }}" class="btn btn-ghost btn-sm">Sign out</a>
+    </div>
+</nav>
+
+<main class="main-content narrow">
+    <section class="result-hero {{ 'approved' if result.prediction == 'Approved' else 'rejected' }}">
+        <div class="result-icon">{{ '✓' if result.prediction == 'Approved' else '!' }}</div>
+        <div>
+            <h1>{{ result.prediction }}</h1>
+            <p>{{ result.confidence }}% confidence · Saved as #{{ result.application_id }}</p>
+        </div>
+        <span class="risk-tag risk-{{ result.risk_level | lower | replace(' ', '-') }}">{{ result.risk_level }} Risk</span>
+    </section>
+
+    <section class="card">
+        <p class="recommendation-text">{{ result.recommendation }}</p>
+        <div class="prob-bars">
+            <div class="prob-row">
+                <div class="prob-label"><span>Approval</span><strong>{{ result.approval_probability }}%</strong></div>
+                <div class="bar"><div class="fill success" style="width:{{ result.approval_probability }}%"></div></div>
+            </div>
+            <div class="prob-row">
+                <div class="prob-label"><span>Default Risk</span><strong>{{ result.default_probability }}%</strong></div>
+                <div class="bar"><div class="fill danger" style="width:{{ result.default_probability }}%"></div></div>
             </div>
         </div>
-    </header>
+    </section>
 
-    <main class="container">
-        <section class="result-card {{ 'approved' if result.prediction == 'Approved' else 'rejected' }}">
-            <div class="result-header">
-                <span class="result-icon">
-                    {% if result.prediction == 'Approved' %}✅{% else %}⚠️{% endif %}
-                </span>
-                <div>
-                    <h2>{{ result.prediction }}</h2>
-                    <p class="confidence">Confidence: {{ result.confidence }}%</p>
-                </div>
-            </div>
-
-            <div class="risk-badge risk-{{ result.risk_level | lower | replace(' ', '-') }}">
-                Risk Level: {{ result.risk_level }}
-            </div>
-
-            <p class="recommendation">{{ result.recommendation }}</p>
-
-            <div class="probability-bars">
-                <div class="prob-item">
-                    <div class="prob-label">
-                        <span>Approval Probability</span>
-                        <strong>{{ result.approval_probability }}%</strong>
-                    </div>
-                    <div class="prob-bar">
-                        <div class="prob-fill approval" style="width: {{ result.approval_probability }}%"></div>
-                    </div>
-                </div>
-                <div class="prob-item">
-                    <div class="prob-label">
-                        <span>Default Risk</span>
-                        <strong>{{ result.default_probability }}%</strong>
-                    </div>
-                    <div class="prob-bar">
-                        <div class="prob-fill default" style="width: {{ result.default_probability }}%"></div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <section class="summary-card">
-            <h3>Applicant Summary</h3>
-            <div class="summary-grid">
-                <div class="summary-item">
-                    <span class="label">Gender</span>
-                    <span class="value">{{ result.applicant.Gender }}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="label">Marital Status</span>
-                    <span class="value">{{ 'Married' if result.applicant.Married == 'Yes' else 'Not Married' }}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="label">Education</span>
-                    <span class="value">{{ result.applicant.Education }}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="label">Employment</span>
-                    <span class="value">{{ 'Self-Employed' if result.applicant.Self_Employed == 'Yes' else 'Salaried' }}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="label">Monthly Income</span>
-                    <span class="value">₹{{ "{:,.0f}".format(result.applicant.ApplicantIncome) }}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="label">Loan Amount</span>
-                    <span class="value">₹{{ "{:,.0f}".format(result.applicant.LoanAmount * 1000) }}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="label">Loan Term</span>
-                    <span class="value">{{ result.applicant.Loan_Amount_Term }} months</span>
-                </div>
-                <div class="summary-item">
-                    <span class="label">Credit History</span>
-                    <span class="value">{{ 'Good' if result.applicant.Credit_History == 1 else 'Poor / None' }}</span>
-                </div>
-                <div class="summary-item">
-                    <span class="label">Property Area</span>
-                    <span class="value">{{ result.applicant.Property_Area }}</span>
-                </div>
-            </div>
-        </section>
-
-        <div class="actions">
-            <a href="{{ url_for('index') }}" class="btn-primary">Evaluate Another Applicant</a>
+    <section class="card">
+        <h2>Applicant Summary</h2>
+        <div class="summary-grid">
+            <div><span>Gender</span><strong>{{ result.applicant.Gender }}</strong></div>
+            <div><span>Marital Status</span><strong>{{ 'Married' if result.applicant.Married == 'Yes' else 'Not Married' }}</strong></div>
+            <div><span>Education</span><strong>{{ result.applicant.Education }}</strong></div>
+            <div><span>Employment</span><strong>{{ 'Self-Employed' if result.applicant.Self_Employed == 'Yes' else 'Salaried' }}</strong></div>
+            <div><span>Income</span><strong>₹{{ "{:,.0f}".format(result.applicant.ApplicantIncome) }}</strong></div>
+            <div><span>Loan Amount</span><strong>₹{{ "{:,.0f}".format(result.applicant.LoanAmount * 1000) }}</strong></div>
+            <div><span>Term</span><strong>{{ result.applicant.Loan_Amount_Term }} mo</strong></div>
+            <div><span>Credit</span><strong>{{ 'Good' if result.applicant.Credit_History == 1 else 'Poor' }}</strong></div>
+            <div><span>Area</span><strong>{{ result.applicant.Property_Area }}</strong></div>
         </div>
-    </main>
+    </section>
 
-    <footer class="footer">
-        <div class="container">
-            <p>Powered by {{ metrics.best_model if metrics else 'XGBoost' }} | Smart Lender &copy; 2026</p>
-        </div>
-    </footer>
-</body>
-</html>
+    <div class="action-row">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary">New Application</a>
+        <a href="{{ url_for('history') }}" class="btn btn-secondary">View History</a>
+    </div>
+</main>
+{% endblock %}

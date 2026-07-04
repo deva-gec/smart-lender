@@ -29,13 +29,14 @@ Smart Lender addresses these challenges by automating creditworthiness assessmen
 
 ## Features
 
-- **Four ML models trained and compared**: Decision Tree, Random Forest, KNN, and XGBoost
-- **Best model selection**: XGBoost selected and saved for production predictions
-- **Real-time web predictions**: Submit applicant details and receive instant approval/rejection
-- **Confidence scores & risk levels**: Low, Moderate, High risk classifications with recommendations
-- **REST API**: Programmatic batch evaluation for high-volume periods
-- **IBM Cloud ready**: Procfile, manifest.yml, and Gunicorn configuration included
-- **Preprocessing pipeline**: Handles missing values and categorical encoding automatically
+- **Secure login**: Real mobile OTP (Firebase SMS) + Google sign-in
+- **Data persistence**: All users and loan applications saved in SQLite database
+- **Application history**: View past predictions and export your data as JSON
+- **Four ML models**: Decision Tree, Random Forest, KNN, and XGBoost
+- **Best model selection**: XGBoost saved and used for real-time predictions
+- **Modern dashboard UI**: Redesigned fintech-style interface
+- **REST API**: Authenticated batch evaluation endpoint
+- **IBM Cloud ready**: Procfile, manifest.yml, and Gunicorn configuration
 
 ### Model Performance
 
@@ -127,6 +128,16 @@ pip install -r requirements.txt
 ```
 
 > **macOS note:** If XGBoost fails to load, install OpenMP: `brew install libomp`
+
+### 3. Configure Firebase (required for login)
+
+See **[FIREBASE_SETUP.md](FIREBASE_SETUP.md)** for step-by-step instructions to enable real OTP and Google login.
+
+```bash
+cp .env.example .env
+# Edit .env with your Firebase keys
+# Place firebase-service-account.json in project root
+```
 
 ### 4. Train the models
 

@@ -1,3 +1,3 @@
-from app import app, load_artifacts
+from app import app, create_app
 
-load_artifacts()
+create_app()

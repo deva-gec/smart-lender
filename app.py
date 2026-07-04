@@ -1,142 +1,207 @@
-"""Smart Lender — Flask web application for loan approval prediction."""
+"""Smart Lender — Flask application with auth and data persistence."""
 
-import json
 import os
 
-import joblib
-import numpy as np
-import pandas as pd
-from flask import Flask, flash, redirect, render_template, request, url_for
+from dotenv import load_dotenv
+from flask import (
+    Flask,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
+
+from auth import (
+    current_user_id,
+    init_firebase,
+    login_required,
+    login_user,
+    logout_user,
+    verify_firebase_token,
+)
+from database import (
+    export_user_data,
+    get_user_applications,
+    get_user_by_id,
+    init_db,
+    save_application,
+    upsert_user,
+)
+import predictor
+from predictor import load_artifacts, predict_loan
+
+load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODELS_DIR = os.path.join(BASE_DIR, "models")
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "smart-lender-dev-key")
-
-FEATURE_COLUMNS = [
-    "Gender",
-    "Married",
-    "Education",
-    "Self_Employed",
-    "ApplicantIncome",
-    "LoanAmount",
-    "Loan_Amount_Term",
-    "Credit_History",
-    "Property_Area",
-]
-
-model = None
-label_encoder = None
-model_metrics = None
+app.secret_key = os.environ.get("SECRET_KEY", "smart-lender-dev-key-change-me")
+app.config["PERMANENT_SESSION_LIFETIME"] = 86400 * 7
 
 
-def load_artifacts() -> None:
-    global model, label_encoder, model_metrics
-
-    model_path = os.path.join(MODELS_DIR, "xgboost_model.pkl")
-    encoder_path = os.path.join(MODELS_DIR, "label_encoder.pkl")
-    metrics_path = os.path.join(MODELS_DIR, "model_metrics.json")
-
-    if not os.path.exists(model_path):
-        raise FileNotFoundError(
-            "Trained model not found. Run `python train_model.py` first."
-        )
-
-    model = joblib.load(model_path)
-    label_encoder = joblib.load(encoder_path)
-
-    if os.path.exists(metrics_path):
-        with open(metrics_path, encoding="utf-8") as f:
-            model_metrics = json.load(f)
-    else:
-        model_metrics = {"best_model": "XGBoost", "models": {}}
-
-
-def predict_loan(form_data: dict) -> dict:
-    row = {
-        "Gender": form_data["gender"],
-        "Married": form_data["married"],
-        "Education": form_data["education"],
-        "Self_Employed": form_data["self_employed"],
-        "ApplicantIncome": float(form_data["applicant_income"]),
-        "LoanAmount": float(form_data["loan_amount"]),
-        "Loan_Amount_Term": int(form_data["loan_term"]),
-        "Credit_History": int(form_data["credit_history"]),
-        "Property_Area": form_data["property_area"],
+def firebase_client_config() -> dict:
+    return {
+        "apiKey": os.environ.get("FIREBASE_API_KEY", ""),
+        "authDomain": os.environ.get("FIREBASE_AUTH_DOMAIN", ""),
+        "projectId": os.environ.get("FIREBASE_PROJECT_ID", ""),
+        "storageBucket": os.environ.get("FIREBASE_STORAGE_BUCKET", ""),
+        "messagingSenderId": os.environ.get("FIREBASE_MESSAGING_SENDER_ID", ""),
+        "appId": os.environ.get("FIREBASE_APP_ID", ""),
     }
 
-    df = pd.DataFrame([row])
-    prediction_enc = model.predict(df)[0]
-    probabilities = model.predict_proba(df)[0]
-    classes = label_encoder.classes_
-    prob_map = {cls: float(prob) for cls, prob in zip(classes, probabilities)}
 
-    prediction = label_encoder.inverse_transform([prediction_enc])[0]
-    confidence = prob_map[prediction] * 100
+def firebase_ready() -> bool:
+    cfg = firebase_client_config()
+    return bool(cfg["apiKey"] and cfg["projectId"] and init_firebase())
 
-    if prediction == "Y":
-        if confidence >= 80:
-            risk_level = "Low"
-            recommendation = (
-                "Fast-track approval recommended. Applicant shows strong "
-                "repayment indicators."
-            )
-        else:
-            risk_level = "Moderate"
-            recommendation = (
-                "Conditional approval. Standard verification recommended."
-            )
-    else:
-        if confidence >= 75:
-            risk_level = "High"
-            recommendation = (
-                "High-risk applicant detected. Further scrutiny and document "
-                "verification required before proceeding."
-            )
-        else:
-            risk_level = "Moderate-High"
-            recommendation = (
-                "Application flagged for manual review. Additional income "
-                "verification advised."
-            )
 
+@app.context_processor
+def inject_globals():
+    user = get_user_by_id(current_user_id()) if current_user_id() else None
     return {
-        "prediction": "Approved" if prediction == "Y" else "Rejected",
-        "raw_prediction": prediction,
-        "confidence": round(confidence, 1),
-        "approval_probability": round(prob_map.get("Y", 0) * 100, 1),
-        "default_probability": round(prob_map.get("N", 0) * 100, 1),
-        "risk_level": risk_level,
-        "recommendation": recommendation,
-        "applicant": row,
+        "current_user": user,
+        "firebase_config": firebase_client_config(),
+        "firebase_ready": firebase_ready(),
+        "metrics": predictor.model_metrics,
     }
 
 
 @app.route("/")
-def index():
-    return render_template("index.html", metrics=model_metrics)
+def root():
+    if current_user_id():
+        return redirect(url_for("dashboard"))
+    return redirect(url_for("login"))
+
+
+@app.route("/login")
+def login():
+    if current_user_id():
+        return redirect(url_for("dashboard"))
+    return render_template("login.html")
+
+
+@app.route("/api/auth/login", methods=["POST"])
+def api_login():
+    if not request.is_json:
+        return jsonify({"error": "JSON body required"}), 400
+
+    data = request.get_json()
+    id_token = data.get("idToken")
+    if not id_token:
+        return jsonify({"error": "idToken is required"}), 400
+
+    try:
+        decoded = verify_firebase_token(id_token)
+    except Exception as exc:
+        return jsonify({"error": f"Authentication failed: {exc}"}), 401
+
+    firebase_uid = decoded["uid"]
+    phone = decoded.get("phone_number")
+    email = decoded.get("email")
+    name = decoded.get("name") or decoded.get("display_name")
+    picture = decoded.get("picture")
+
+    if phone:
+        provider = "phone"
+    elif decoded.get("firebase", {}).get("sign_in_provider") == "google.com":
+        provider = "google"
+    else:
+        provider = decoded.get("firebase", {}).get("sign_in_provider", "firebase")
+
+    user = upsert_user(
+        firebase_uid=firebase_uid,
+        auth_provider=provider,
+        phone=phone,
+        email=email,
+        display_name=name,
+        photo_url=picture,
+    )
+    login_user(user)
+
+    return jsonify(
+        {
+            "success": True,
+            "user": {
+                "id": user["id"],
+                "display_name": user.get("display_name"),
+                "phone": user.get("phone"),
+                "email": user.get("email"),
+                "auth_provider": user.get("auth_provider"),
+            },
+        }
+    )
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def api_logout():
+    logout_user()
+    return jsonify({"success": True})
+
+
+@app.route("/logout")
+def logout():
+    logout_user()
+    flash("You have been signed out.", "success")
+    return redirect(url_for("login"))
+
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    applications = get_user_applications(current_user_id(), limit=5)
+    return render_template("dashboard.html", recent_applications=applications)
+
+
+@app.route("/history")
+@login_required
+def history():
+    applications = get_user_applications(current_user_id(), limit=100)
+    return render_template("history.html", applications=applications)
 
 
 @app.route("/predict", methods=["POST"])
+@login_required
 def predict():
     try:
         result = predict_loan(request.form)
-        return render_template("result.html", result=result, metrics=model_metrics)
+        application_id = save_application(current_user_id(), request.form, result)
+        result["application_id"] = application_id
+        return render_template("result.html", result=result)
     except (ValueError, KeyError) as exc:
         flash(f"Invalid input: {exc}", "error")
-        return redirect(url_for("index"))
+        return redirect(url_for("dashboard"))
+
+
+@app.route("/api/my-applications")
+@login_required
+def api_my_applications():
+    return jsonify(get_user_applications(current_user_id()))
+
+
+@app.route("/api/export-my-data")
+@login_required
+def api_export_my_data():
+    return jsonify(export_user_data(current_user_id()))
 
 
 @app.route("/health")
 def health():
-    return {"status": "healthy", "model_loaded": model is not None}
+    return {
+        "status": "healthy",
+        "model_loaded": predictor.model is not None,
+        "firebase_ready": firebase_ready(),
+        "database": "sqlite",
+    }
 
 
 @app.route("/api/predict", methods=["POST"])
+@login_required
 def api_predict():
     if not request.is_json:
-        return {"error": "JSON body required"}, 400
+        return jsonify({"error": "JSON body required"}), 400
 
     data = request.get_json()
     field_map = {
@@ -154,16 +219,26 @@ def api_predict():
     form_data = {}
     for api_key, form_key in field_map.items():
         if api_key not in data:
-            return {"error": f"Missing field: {api_key}"}, 400
+            return jsonify({"error": f"Missing field: {api_key}"}), 400
         form_data[form_key] = data[api_key]
 
     try:
-        return predict_loan(form_data)
+        result = predict_loan(form_data)
+        application_id = save_application(current_user_id(), form_data, result)
+        result["application_id"] = application_id
+        return jsonify(result)
     except (ValueError, KeyError) as exc:
-        return {"error": str(exc)}, 400
+        return jsonify({"error": str(exc)}), 400
+
+
+def create_app():
+    init_db()
+    load_artifacts()
+    init_firebase()
+    return app
 
 
 if __name__ == "__main__":
-    load_artifacts()
+    create_app()
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port, debug=os.environ.get("FLASK_DEBUG") == "1")

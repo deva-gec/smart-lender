@@ -3,4 +3,6 @@ __pycache__/
 *.pyc
 .DS_Store
 .env
+firebase-service-account.json
+data/smart_lender.db
 !models/*.pkl
