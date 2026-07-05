@@ -255,9 +255,9 @@ Ensure models are trained before deploying so `models/xgboost_model.pkl` is incl
 
 | Name | Role |
 |------|------|
-| K Deva Venkata Prem Sai | Project Lead & Developer |
+| Eswar Para | Team Leader |
+| K Deva Venkata Prem Sai | Team Member |
 | Pravallika Banavath | Team Member |
-| Eswar Para | Team Member |
 | Pedaprolu S V N Hasini Pravallika | Team Member |
 | Bhukya Suneetha | Team Member |
 
